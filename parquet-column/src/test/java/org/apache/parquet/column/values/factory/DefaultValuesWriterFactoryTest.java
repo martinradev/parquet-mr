@@ -31,6 +31,7 @@ import org.apache.parquet.column.values.fallback.FallbackValuesWriter;
 import org.apache.parquet.column.values.plain.BooleanPlainValuesWriter;
 import org.apache.parquet.column.values.plain.FixedLenByteArrayPlainValuesWriter;
 import org.apache.parquet.column.values.plain.PlainValuesWriter;
+import org.apache.parquet.column.values.bytestreamsplit.ByteStreamSplitValuesWriter;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 
@@ -303,9 +304,97 @@ public class DefaultValuesWriterFactoryTest {
       PlainValuesWriter.class);
   }
 
+  @Test
+  public void testFloat_V1_WithByteStreamSplit() {
+   doTestByteStreamSplit(
+     PrimitiveTypeName.FLOAT,
+     WriterVersion.PARQUET_1_0,
+     false,
+     true,
+     ByteStreamSplitValuesWriter.class);
+  }
+
+  @Test
+  public void testDouble_V1_WithByteStreamSplit() {
+    doTestByteStreamSplit(
+      PrimitiveTypeName.DOUBLE,
+      WriterVersion.PARQUET_1_0,
+      false,
+      true,
+      ByteStreamSplitValuesWriter.class);
+  }
+
+  @Test
+  public void testFloat_V2_WithByteStreamSplit() {
+    doTestByteStreamSplit(
+      PrimitiveTypeName.FLOAT,
+      WriterVersion.PARQUET_2_0,
+      false,
+      true,
+      ByteStreamSplitValuesWriter.class);
+  }
+
+  @Test
+  public void testDouble_V2_WithByteStreamSplit() {
+    doTestByteStreamSplit(
+      PrimitiveTypeName.DOUBLE,
+      WriterVersion.PARQUET_2_0,
+      false,
+      true,
+      ByteStreamSplitValuesWriter.class);
+  }
+
+  public void testFloat_V1_WithByteStreamSplitAndDictionary() {
+    doTestByteStreamSplit(
+      PrimitiveTypeName.FLOAT,
+      WriterVersion.PARQUET_1_0,
+      true,
+      true,
+      ByteStreamSplitValuesWriter.class);
+  }
+
+  @Test
+  public void testDouble_V1_WithByteStreamSplitAndDictionary() {
+    doTestByteStreamSplit(
+      PrimitiveTypeName.DOUBLE,
+      WriterVersion.PARQUET_1_0,
+      true,
+      true,
+      ByteStreamSplitValuesWriter.class);
+  }
+
+  @Test
+  public void testFloat_V2_WithByteStreamSplitAndDictionary() {
+    doTestByteStreamSplit(
+      PrimitiveTypeName.FLOAT,
+      WriterVersion.PARQUET_2_0,
+      true,
+      true,
+      ByteStreamSplitValuesWriter.class);
+  }
+
+  @Test
+  public void testDouble_V2_WithByteStreamSplitAndDictionary() {
+    doTestByteStreamSplit(
+      PrimitiveTypeName.DOUBLE,
+      WriterVersion.PARQUET_2_0,
+      true,
+      true,
+      ByteStreamSplitValuesWriter.class);
+  }
+
+
+  private void doTestByteStreamSplit(PrimitiveTypeName typeName, WriterVersion version, boolean enableDictionary, boolean enableByteStreamSplit, Class<? extends ValuesWriter> expectedValueWriterClass) {
+    ColumnDescriptor mockPath = getMockColumn(typeName);
+    ValuesWriterFactory factory = getDefaultFactory(version, enableDictionary, enableByteStreamSplit);
+    ValuesWriter writer = factory.newValuesWriter(mockPath);
+
+    validateWriterType(writer, expectedValueWriterClass);
+  }
+
   private void doTestValueWriter(PrimitiveTypeName typeName, WriterVersion version, boolean enableDictionary, Class<? extends ValuesWriter> expectedValueWriterClass) {
     ColumnDescriptor mockPath = getMockColumn(typeName);
-    ValuesWriterFactory factory = getDefaultFactory(version, enableDictionary);
+    ValuesWriterFactory factory = getDefaultFactory(version, enableDictionary, false);
     ValuesWriter writer = factory.newValuesWriter(mockPath);
 
     validateWriterType(writer, expectedValueWriterClass);
@@ -313,7 +402,7 @@ public class DefaultValuesWriterFactoryTest {
 
   private void doTestValueWriter(PrimitiveTypeName typeName, WriterVersion version, boolean enableDictionary, Class<? extends ValuesWriter> initialValueWriterClass, Class<? extends ValuesWriter> fallbackValueWriterClass) {
     ColumnDescriptor mockPath = getMockColumn(typeName);
-    ValuesWriterFactory factory = getDefaultFactory(version, enableDictionary);
+    ValuesWriterFactory factory = getDefaultFactory(version, enableDictionary, false);
     ValuesWriter writer = factory.newValuesWriter(mockPath);
 
     validateFallbackWriter(writer, initialValueWriterClass, fallbackValueWriterClass);
@@ -325,10 +414,11 @@ public class DefaultValuesWriterFactoryTest {
     return mockPath;
   }
 
-  private ValuesWriterFactory getDefaultFactory(WriterVersion writerVersion, boolean enableDictionary) {
+  private ValuesWriterFactory getDefaultFactory(WriterVersion writerVersion, boolean enableDictionary, boolean enableByteStreamSplit) {
     ValuesWriterFactory factory = new DefaultValuesWriterFactory();
     ParquetProperties.builder()
       .withDictionaryEncoding(enableDictionary)
+      .withByteStreamSplitEncoding(enableByteStreamSplit)
       .withWriterVersion(writerVersion)
       .withValuesWriterFactory(factory)
       .build();
